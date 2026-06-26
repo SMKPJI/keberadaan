@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="ms-MY">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistem Keberadaan Guru &amp; Staf</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <!-- Font Awesome 6 (free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ===== Custom CSS Variables (selaras dengan reka bentuk asal) ===== */
+        :root {
+            --biru: 214 80% 28%;
+            --biru-muda: 214 70% 45%;
+            --biru-cerah: 214 60% 92%;
+            --merah-jambu: 340 60% 65%;
+            --merah-jambu-muda: 340 60% 92%;
+            --kelabu: 215 15% 55%;
+            --kelabu-muda: 215 15% 94%;
+            --kelabu-gelap: 215 20% 30%;
+            --background: 210 20% 98%;
+            --foreground: 215 25% 15%;
+            --card: 0 0% 100%;
+            --card-foreground: 215 25% 15%;
+            --border: 214 20% 88%;
+            --muted: 210 15% 94%;
+            --muted-foreground: 215 15% 45%;
+            --destructive: 0 84% 60%;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            min-height: 100vh;
+        }
+
+        /* ===== Reka Bentuk Komponen ===== */
+        .stat-card {
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid hsl(var(--border));
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .page-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            margin-bottom: 0.25rem;
+        }
+        .page-subheader {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 1.5rem;
+        }
+
+        /* Badge warna untuk jenis keberadaan */
+        .badge-rasmi-dalaman {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .badge-rasmi-luar {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+        .badge-keluar {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .badge-cuti {
+            background: #fce7f3;
+            color: #db2777;
+        }
+        .badge-default {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        /* Tab aktif */
+        .tab-active {
+            background: white;
+            color: hsl(var(--biru));
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .tab-inactive {
+            color: hsl(var(--muted-foreground));
+        }
+        .tab-inactive:hover {
+            color: hsl(var(--foreground));
+        }
+
+        /* Sembunyikan anak panah pada input number */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Animasi ringan */
+        .fade-in {
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: hsl(var(--muted));
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: hsl(var(--kelabu));
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: hsl(var(--kelabu-gelap));
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- HEADER -->
+    <!-- ============================================================ -->
+    <header id="appHeader" class="bg-[hsl(var(--biru))] text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <!-- Kiri: Logo + Nama -->
+            <div class="flex items-center gap-3">
+                <div id="logoContainer" class="h-10 w-10 rounded bg-white/10 flex items-center justify-center text-xl font-bold text-white/80">
+                    <i class="fas fa-school"></i>
+                </div>
+                <div>
+                    <div id="headerSchoolName" class="font-bold text-base leading-tight">Sistem Keberadaan</div>
+                    <div class="text-xs text-blue-200">Pengurusan Keberadaan Guru &amp; Staf</div>
+                </div>
+            </div>
+
+            <!-- Kanan: Actions -->
+            <div class="flex items-center gap-2">
+                <button id="refreshBtn" class="text-white hover:bg-white/10 rounded-md p-2 text-sm transition" title="Muat semula data">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button id="adminToggleBtn" class="text-white hover:bg-white/10 rounded-md px-3 py-1.5 text-xs border border-white/30 flex items-center gap-1.5 transition">
+                    <i class="fas fa-shield-alt"></i>
+                    <span id="adminToggleLabel">Pentadbir</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- MAIN CONTENT -->
+    <!-- ============================================================ -->
+    <main class="max-w-7xl mx-auto px-4 py-5">
+
+        <!-- ===== TABS UTAMA (Pengguna / Admin) ===== -->
+        <div id="tabContainer" class="flex flex-wrap gap-1 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
+            <!-- Tab dinamik akan dijana oleh JS -->
+        </div>
+
+        <!-- ===== KANDUNGAN ===== -->
+        <div id="contentArea" class="fade-in">
+            <!-- Diisi oleh JS -->
+        </div>
+
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- DIALOG LOGIN ADMIN -->
+    <!-- ============================================================ -->
+    <div id="loginOverlay" class="fixed inset-0 bg-black/40 flex items-center justify-center z-[999] hidden">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 fade-in">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-full bg-[hsl(var(--biru-cerah))] flex items-center justify-center">
+                    <i class="fas fa-shield-alt text-[hsl(var(--biru))] text-lg"></i>
+                </div>
+                <h2 class="text-lg font-semibold">Log Masuk Pentadbir</h2>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium block mb-1">Password</label>
+                    <div class="relative">
+                        <input id="loginPassword" type="password" class="w-full border border-border rounded-md px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))] focus:border-transparent" placeholder="Masukkan password pentadbir" />
+                        <button id="loginTogglePass" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <p id="loginError" class="text-xs text-destructive mt-1 hidden">Password salah. Sila cuba lagi.</p>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button id="loginCancelBtn" class="flex-1 border border-border rounded-md px-4 py-2 text-sm hover:bg-muted transition">Batal</button>
+                    <button id="loginSubmitBtn" class="flex-1 bg-[hsl(var(--biru))] hover:bg-[hsl(var(--biru-muda))] text-white rounded-md px-4 py-2 text-sm transition flex items-center justify-center gap-2">
+                        <i class="fas fa-sign-in-alt"></i> Log Masuk
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- DIALOG KONFIRMASI PADAM (generic) -->
+    <!-- ============================================================ -->
+    <div id="confirmOverlay" class="fixed inset-0 bg-black/40 flex items-center justify-center z-[999] hidden">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 fade-in">
+            <h2 id="confirmTitle" class="text-lg font-semibold mb-2">Sahkan Tindakan</h2>
+            <p id="confirmMessage" class="text-sm text-muted-foreground">Adakah anda pasti?</p>
+            <div class="flex gap-2 mt-5">
+                <button id="confirmCancelBtn" class="flex-1 border border-border rounded-md px-4 py-2 text-sm hover:bg-muted transition">Batal</button>
+                <button id="confirmOkBtn" class="flex-1 bg-destructive text-white rounded-md px-4 py-2 text-sm hover:bg-red-700 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Ya, Padam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT – SEMUA LOGIK -->
+    <!-- ============================================================ -->
+    <script>
+        // =====================================================================
+        // 1. KONSTAN & API
+        // =====================================================================
+        const API_URL =
+            'https://script.google.com/macros/s/AKfycbw_XPcFIaGK1-04_RsJEGIc1J9q92glcEBhJzb2VQamCXyZZJsy7ypXPkADwhkXaGZw/exec';
+
+        const JENIS_KEBERADAAN = [
+            'Rasmi Dalaman',
+            'Rasmi Luar',
+            'Keluar Waktu Bekerja',
+            'Cuti'
+        ];
+
+        // =====================================================================
+        // 2. STATE
+        // =====================================================================
+        let state = {
+            guru: [],
+            keberadaan: [],
+            tetapan: null,
+            isAdmin: false,
+            loading: false,
+            // UI state
+            activeTab: 'relief', // 'relief' | 'rekod' | 'dashboard' | 'urusguru' | 'urusrekod' | 'analisisHarian' | 'analisisBulanan' | 'analisisTahunan'
+            // filter
+            filterCarian: '',
+            filterJenis: 'semua',
+            filterTarikhMula: '',
+            filterTarikhTamat: '',
+            // selected date
+            tarikhPilih: new Date().toISOString().split('T')[0],
+            // analysis
+            analisisBulan: new Date().getMonth(),
+            analisisTahun: new Date().getFullYear(),
+            analisisTab: 'kalendar', // 'kalendar' | 'individu' | 'jawatan'
+            analisisTahunanTab: 'trend', // 'trend' | 'individu' | 'jawatan'
+            // form
+            form: {
+                idGuru: '',
+                jenis: '',
+                jenisCuti: '',
+                tarikhMula: '',
+                tarikhTamat: '',
+                masaMula: '',
+                masaTamat: '',
+                namaProgram: '',
+                tempat: '',
+                anjuran: '',
+                catatan: ''
+            },
+            // confirm
+            confirmCallback: null,
+        };
+
+        // =====================================================================
+        // 3. API HELPERS
+        // =====================================================================
+        async function apiGet(params) {
+            const q = new URLSearchParams(params).toString();
+            const res = await fetch(`${API_URL}?${q}`);
+            return res.json();
+        }
+
+        async function apiPost(body) {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(body),
+            });
+            return res.json();
+        }
+
+        // --- Guru ---
+        async function getGuru() { return apiGet({ action: 'getGuru' }); }
+
+        async function tambahGuru(payload) { return apiPost({ action: 'tambahGuru', payload }); }
+
+        async function padamGuru(id) { return apiPost({ action: 'padamGuru', id }); }
+
+        // --- Keberadaan ---
+        async function getKeberadaan() { return apiGet({ action: 'getKeberadaan' }); }
+
+        async function getKeberadaanByTarikh(tarikh) { return apiGet({ action: 'getKeberadaanByTarikh', tarikh }); }
+
+        async function getKeberadaanByTarikhRange(tarikhMula, tarikhTamat) {
+            return apiGet({ action: 'getKeberadaanByTarikhRange', tarikhMula, tarikhTamat });
+        }
+
+        async function tambahKeberadaan(payload) { return apiPost({ action: 'tambahKeberadaan', payload }); }
+
+        async function padamKeberadaan(id) { return apiPost({ action: 'padamKeberadaan', id }); }
+
+        // --- Tetapan ---
+        async function getTetapan() { return apiGet({ action: 'getTetapan' }); }
+
+        async function semakPassword(password) { return apiPost({ action: 'semakPassword', password }); }
+
+        // =====================================================================
+        // 4. UTILITY
+        // =====================================================================
+        function formatTarikh(tarikh) {
+            if (!tarikh) return '-';
+            const d = new Date(tarikh);
+            return d.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function formatTarikhPanjang(tarikh) {
+            if (!tarikh) return '-';
+            const d = new Date(tarikh);
+            return d.toLocaleDateString('ms-MY', { day: '2-digit', month: 'long', year: 'numeric' });
+        }
+
+        function getTodayString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getBadgeColor(jenis) {
+            switch (jenis) {
+                case 'Rasmi Dalaman':
+                    return 'badge-rasmi-dalaman';
+                case 'Rasmi Luar':
+                    return 'badge-rasmi-luar';
+                case 'Keluar Waktu Bekerja':
+                    return 'badge-keluar';
+                case 'Cuti':
+                    return 'badge-cuti';
+                default:
+                    return 'badge-default';
+            }
+        }
+
+        function getBadgeLabel(jenis) {
+            return getBadgeColor(jenis);
+        }
+
+        function isGuruTiadaOnDate(k, tarikh) {
+            const t = new Date(tarikh);
+            const mula = new Date(k.Tarikh_Mula);
+            const tamat = new Date(k.Tarikh_Tamat);
+            t.setHours(0, 0, 0, 0);
+            mula.setHours(0, 0, 0, 0);
+            tamat.setHours(0, 0, 0, 0);
+            return t >= mula && t <= tamat;
+        }
+
+        function getDaysInMonth(year, month) {
+            return new Date(year, month + 1, 0).getDate();
+        }
+
+        function getBulanName(i) {
+            return ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November',
+                'Disember'
+            ][i];
+        }
+
+        function getBulanShort(i) {
+            return ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'][i];
+        }
+
+        function getFirstDayOfMonth(year, month) {
+            // 0=Isnin, 1=Selasa ... 6=Ahad
+            const d = new Date(year, month, 1);
+            const day = d.getDay(); // 0=Ahad
+            return day === 0 ? 6 : day - 1;
+        }
+
+        function formatMasa(masa) {
+            if (!masa) return '-';
+            return masa;
+        }
+
+        // =====================================================================
+        // 5. RENDER FUNCTIONS
+        // =====================================================================
+
+        // --- 5a. Tabs ---
+        function renderTabs() {
+            const container = document.getElementById('tabContainer');
+            const isAdmin = state.isAdmin;
+
+            let tabs = [];
+            if (isAdmin) {
+                tabs = [
+                    { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+                    { id: 'relief', label: 'Relief', icon: 'fa-users' },
+                    { id: 'rekod', label: 'Rekod Saya', icon: 'fa-clipboard-list' },
+                    { id: 'urusguru', label: 'Urus Guru', icon: 'fa-user-cog' },
+                    { id: 'urusrekod', label: 'Urus Rekod', icon: 'fa-database' },
+                    { id: 'analisisHarian', label: 'Analisis Harian', icon: 'fa-calendar-day' },
+                    { id: 'analisisBulanan', label: 'Analisis Bulanan', icon: 'fa-calendar-alt' },
+                    { id: 'analisisTahunan', label: 'Analisis Tahunan', icon: 'fa-calendar' },
+                ];
+            } else {
+                tabs = [
+                    { id: 'relief', label: 'Senarai Relief', icon: 'fa-users' },
+                    { id: 'rekod', label: 'Rekod Keberadaan', icon: 'fa-clipboard-list' },
+                ];
+            }
+
+            container.innerHTML = tabs.map(t => `
+                    <button data-tab="${t.id}" class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${state.activeTab === t.id ? 'tab-active' : 'tab-inactive'}">
+                        <i class="fas ${t.icon}"></i>
+                        ${t.label}
+                    </button>
+                `).join('');
+
+            // Event listeners
+            container.querySelectorAll('[data-tab]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.activeTab = btn.dataset.tab;
+                    renderTabs();
+                    renderContent();
+                });
+            });
+        }
+
+        // --- 5b. Kandungan Utama ---
+        function renderContent() {
+            const area = document.getElementById('contentArea');
+            const tab = state.activeTab;
+
+            switch (tab) {
+                case 'relief':
+                    renderRelief(area);
+                    break;
+                case 'rekod':
+                    renderFormKeberadaan(area);
+                    break;
+                case 'dashboard':
+                    renderDashboard(area);
+                    break;
+                case 'urusguru':
+                    renderUrusGuru(area);
+                    break;
+                case 'urusrekod':
+                    renderUrusKeberadaan(area);
+                    break;
+                case 'analisisHarian':
+                    renderAnalisisHarian(area);
+                    break;
+                case 'analisisBulanan':
+                    renderAnalisisBulanan(area);
+                    break;
+                case 'analisisTahunan':
+                    renderAnalisisTahunan(area);
+                    break;
+                default:
+                    area.innerHTML = '<p class="text-muted-foreground">Pilih tab di atas.</p>';
+            }
+        }
+
+        // =====================================================================
+        // 6. VIEW: PAPARAN RELIEF
+        // =====================================================================
+        function renderRelief(container) {
+            const { keberadaan, loading } = state;
+            const tarikhPilih = state.tarikhPilih || getTodayString();
+
+            const guruTiada = keberadaan.filter(k => isGuruTiadaOnDate(k, tarikhPilih));
+
+            const ringkasan = {};
+            guruTiada.forEach(g => {
+                ringkasan[g.Jenis_Keberadaan] = (ringkasan[g.Jenis_Keberadaan] || 0) + 1;
+            });
+
+            const tarikhLabel = tarikhPilih === getTodayString() ? 'Hari Ini' : formatTarikh(tarikhPilih);
+
+            container.innerHTML = `
+                    <div class="bg-white rounded-lg border border-border shadow-sm">
+                        <div class="pb-4 border-b border-border bg-[hsl(var(--kelabu-muda))] rounded-t-lg p-5">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-9 h-9 rounded-md bg-[hsl(var(--merah-jambu))] flex items-center justify-center text-white">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-base font-semibold">Senarai Relief</h2>
+                                        <p class="text-xs text-muted-foreground">Guru yang memerlukan relief pada tarikh dipilih</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-muted-foreground">Pilih Tarikh:</span>
+                                    <input type="date" id="reliefDate" value="${tarikhPilih}" class="w-40 h-8 text-sm border border-border rounded px-2" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            ${loading ? '<div class="text-center py-8 text-muted-foreground">Memuatkan data...</div>' : `
+                                <div class="mb-4">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <i class="fas fa-calendar-day text-muted-foreground"></i>
+                                        <span class="text-sm font-medium">${tarikhLabel} — ${formatTarikh(tarikhPilih)}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                                        <div class="bg-[hsl(var(--biru-cerah))] rounded-md p-3 text-center">
+                                            <div class="text-2xl font-bold text-[hsl(var(--biru))]">${guruTiada.length}</div>
+                                            <div class="text-xs text-[hsl(var(--biru-muda))]">Jumlah Relief</div>
+                                        </div>
+                                        ${Object.entries(ringkasan).map(([jenis, bil]) => `
+                                            <div class="bg-muted rounded-md p-3 text-center">
+                                                <div class="text-2xl font-bold">${bil}</div>
+                                                <div class="text-xs text-muted-foreground leading-tight">${jenis}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                ${guruTiada.length === 0 ? `
+                                    <div class="flex flex-col items-center justify-center py-10 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                                            <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+                                        </div>
+                                        <p class="text-sm font-medium">Tiada Relief Diperlukan</p>
+                                        <p class="text-xs text-muted-foreground mt-1">Semua guru boleh mengajar pada tarikh ini</p>
+                                    </div>
+                                ` : `
+                                    <div class="space-y-2.5">
+                                        ${guruTiada.map(k => `
+                                            <div class="border border-border rounded-md p-3.5 hover:bg-muted/30 transition">
+                                                <div class="flex items-start justify-between gap-2 flex-wrap">
+                                                    <div>
+                                                        <div class="font-medium text-sm">${k.Nama_Guru}</div>
+                                                        <div class="text-xs text-muted-foreground mt-0.5">
+                                                            ${formatTarikh(k.Tarikh_Mula)}${k.Tarikh_Mula !== k.Tarikh_Tamat ? ` — ${formatTarikh(k.Tarikh_Tamat)}` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${getBadgeColor(k.Jenis_Keberadaan)}">${k.Jenis_Keberadaan}</span>
+                                                        ${k.Jenis_Cuti ? `<span class="text-xs px-2 py-0.5 rounded-full border border-border">${k.Jenis_Cuti}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2 space-y-1 text-xs text-muted-foreground">
+                                                    ${(k.Masa_Mula || k.Masa_Tamat) ? `<div><i class="fas fa-clock w-4"></i> ${k.Masa_Mula} — ${k.Masa_Tamat}</div>` : ''}
+                                                    ${k.Nama_Program ? `<div><i class="fas fa-file-alt w-4"></i> ${k.Nama_Program}</div>` : ''}
+                                                    ${k.Tempat ? `<div><i class="fas fa-map-marker-alt w-4"></i> ${k.Tempat}${k.Anjuran ? ` (${k.Anjuran})` : ''}</div>` : ''}
+                                                    ${k.Catatan ? `<div><i class="fas fa-sticky-note w-4"></i> ${k.Catatan}</div>` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            `}
+                        </div>
+                    </div>
+                `;
+
+            // Event: tarikh berubah
+            const dateInput = document.getElementById('reliefDate');
+            if (dateInput) {
+                dateInput.addEventListener('change', () => {
+                    state.tarikhPilih = dateInput.value || getTodayString();
+                    renderContent();
+                });
+            }
+        }
+
+        // =====================================================================
+        // 7. VIEW: FORM KEBERADAAN
+        // =====================================================================
+        function renderFormKeberadaan(container) {
+            const { guru, tetapan, loading } = state;
+            const f = state.form;
+
+            const guruOptions = [...guru].sort((a, b) => a.Nama.localeCompare(b.Nama));
+
+            const jenisCutiOptions = tetapan?.jenis_cuti || [];
+
+            container.innerHTML = `
+                    <div class="bg-white rounded-lg border border-border shadow-sm">
+                        <div class="pb-4 border-b border-border bg-[hsl(var(--kelabu-muda))] rounded-t-lg p-5">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-md bg-[hsl(var(--biru))] flex items-center justify-center text-white">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-base font-semibold">Rekod Keberadaan</h2>
+                                    <p class="text-xs text-muted-foreground">Isi borang ini jika anda tidak boleh mengajar mengikut jadual</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div id="formMessage" class="hidden"></div>
+
+                            <!-- Nama Guru -->
+                            <div class="space-y-1.5">
+                                <label class="text-sm font-medium">Nama Guru / Staf <span class="text-destructive">*</span></label>
+                                <select id="fNamaGuru" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    <option value="">-- Pilih nama anda --</option>
+                                    ${guruOptions.map(g => `
+                                        <option value="${g.id_Guru}" ${f.idGuru === g.id_Guru ? 'selected' : ''}>${g.Nama} (${g.Jawatan})</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+
+                            <!-- Jenis Keberadaan -->
+                            <div class="space-y-1.5">
+                                <label class="text-sm font-medium">Jenis Keberadaan <span class="text-destructive">*</span></label>
+                                <select id="fJenis" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    <option value="">-- Pilih jenis --</option>
+                                    ${JENIS_KEBERADAAN.map(j => `
+                                        <option value="${j}" ${f.jenis === j ? 'selected' : ''}>${j}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+
+                            <!-- Tarikh -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Tarikh Mula <span class="text-destructive">*</span></label>
+                                    <input type="date" id="fTarikhMula" value="${f.tarikhMula}" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Tarikh Tamat <span class="text-destructive">*</span></label>
+                                    <input type="date" id="fTarikhTamat" value="${f.tarikhTamat}" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                            </div>
+
+                            <!-- Masa (untuk Rasmi Dalaman & Keluar Waktu Bekerja) -->
+                            <div id="fMasaGroup" class="${(f.jenis === 'Rasmi Dalaman' || f.jenis === 'Keluar Waktu Bekerja') ? '' : 'hidden'} grid grid-cols-2 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Masa Mula <span class="text-destructive">*</span></label>
+                                    <input type="time" id="fMasaMula" value="${f.masaMula}" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Masa Tamat <span class="text-destructive">*</span></label>
+                                    <input type="time" id="fMasaTamat" value="${f.masaTamat}" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                            </div>
+
+                            <!-- Nama Program (Rasmi Dalaman & Rasmi Luar) -->
+                            <div id="fProgramGroup" class="${(f.jenis === 'Rasmi Dalaman' || f.jenis === 'Rasmi Luar') ? '' : 'hidden'} space-y-1.5">
+                                <label class="text-sm font-medium">Nama Program <span class="text-destructive">*</span></label>
+                                <input type="text" id="fNamaProgram" value="${f.namaProgram}" placeholder="Contoh: Mesyuarat Panitia Matematik" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                            </div>
+
+                            <!-- Tempat & Anjuran (Rasmi Luar) -->
+                            <div id="fTempatGroup" class="${f.jenis === 'Rasmi Luar' ? '' : 'hidden'} grid grid-cols-2 gap-3">
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Tempat <span class="text-destructive">*</span></label>
+                                    <input type="text" id="fTempat" value="${f.tempat}" placeholder="Contoh: PPD Petaling Utama" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-sm font-medium">Anjuran</label>
+                                    <input type="text" id="fAnjuran" value="${f.anjuran}" placeholder="Contoh: KPM" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                            </div>
+
+                            <!-- Jenis Cuti -->
+                            <div id="fCutiGroup" class="${f.jenis === 'Cuti' ? '' : 'hidden'} space-y-1.5">
+                                <label class="text-sm font-medium">Jenis Cuti <span class="text-destructive">*</span></label>
+                                <select id="fJenisCuti" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    <option value="">-- Pilih jenis cuti --</option>
+                                    ${jenisCutiOptions.map(c => `
+                                        <option value="${c}" ${f.jenisCuti === c ? 'selected' : ''}>${c}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+
+                            <!-- Catatan -->
+                            <div class="space-y-1.5">
+                                <label class="text-sm font-medium">Catatan</label>
+                                <textarea id="fCatatan" rows="2" placeholder="Catatan tambahan (jika ada)" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))] resize-none">${f.catatan}</textarea>
+                            </div>
+
+                            <div id="formError" class="text-xs text-destructive hidden"></div>
+
+                            <div class="flex gap-2 pt-1">
+                                <button id="fResetBtn" class="flex-1 border border-border rounded-md px-4 py-2 text-sm hover:bg-muted transition">Reset</button>
+                                <button id="fSubmitBtn" class="flex-1 bg-[hsl(var(--biru))] hover:bg-[hsl(var(--biru-muda))] text-white rounded-md px-4 py-2 text-sm transition flex items-center justify-center gap-2">
+                                    <i class="fas fa-save"></i> Simpan Rekod
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            // --- Event bindings ---
+            const elNama = document.getElementById('fNamaGuru');
+            const elJenis = document.getElementById('fJenis');
+            const elTarikhMula = document.getElementById('fTarikhMula');
+            const elTarikhTamat = document.getElementById('fTarikhTamat');
+            const elMasaMula = document.getElementById('fMasaMula');
+            const elMasaTamat = document.getElementById('fMasaTamat');
+            const elNamaProgram = document.getElementById('fNamaProgram');
+            const elTempat = document.getElementById('fTempat');
+            const elAnjuran = document.getElementById('fAnjuran');
+            const elJenisCuti = document.getElementById('fJenisCuti');
+            const elCatatan = document.getElementById('fCatatan');
+            const elError = document.getElementById('formError');
+            const elMsg = document.getElementById('formMessage');
+
+            const showError = (msg) => {
+                if (msg) { elError.textContent = msg;
+                    elError.classList.remove('hidden'); } else elError.classList.add('hidden');
+            };
+            const showSuccess = (msg) => {
+                elMsg.textContent = msg;
+                elMsg.className = 'flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm';
+                elMsg.classList.remove('hidden');
+                setTimeout(() => elMsg.classList.add('hidden'), 4000);
+            };
+
+            // Toggle visibility
+            const toggleFields = () => {
+                const jenis = elJenis.value;
+                const isMasa = (jenis === 'Rasmi Dalaman' || jenis === 'Keluar Waktu Bekerja');
+                const isProgram = (jenis === 'Rasmi Dalaman' || jenis === 'Rasmi Luar');
+                const isTempat = (jenis === 'Rasmi Luar');
+                const isCuti = (jenis === 'Cuti');
+
+                document.getElementById('fMasaGroup').classList.toggle('hidden', !isMasa);
+                document.getElementById('fProgramGroup').classList.toggle('hidden', !isProgram);
+                document.getElementById('fTempatGroup').classList.toggle('hidden', !isTempat);
+                document.getElementById('fCutiGroup').classList.toggle('hidden', !isCuti);
+
+                // set min tarikh tamat
+                if (elTarikhMula.value) {
+                    elTarikhTamat.min = elTarikhMula.value;
+                }
+            };
+
+            elJenis.addEventListener('change', () => {
+                state.form.jenis = elJenis.value;
+                toggleFields();
+                showError('');
+            });
+
+            elTarikhMula.addEventListener('change', () => {
+                state.form.tarikhMula = elTarikhMula.value;
+                if (elTarikhMula.value) elTarikhTamat.min = elTarikhMula.value;
+                if (elTarikhTamat.value && new Date(elTarikhTamat.value) < new Date(elTarikhMula.value)) {
+                    elTarikhTamat.value = '';
+                }
+            });
+
+            // Reset
+            document.getElementById('fResetBtn').addEventListener('click', () => {
+                state.form = { idGuru: '', jenis: '', jenisCuti: '', tarikhMula: '', tarikhTamat: '', masaMula: '',
+                    masaTamat: '', namaProgram: '', tempat: '', anjuran: '', catatan: '' };
+                renderContent();
+            });
+
+            // Submit
+            document.getElementById('fSubmitBtn').addEventListener('click', async () => {
+                const idGuru = elNama.value;
+                const jenis = elJenis.value;
+                const tarikhMula = elTarikhMula.value;
+                const tarikhTamat = elTarikhTamat.value;
+                const masaMula = elMasaMula ? elMasaMula.value : '';
+                const masaTamat = elMasaTamat ? elMasaTamat.value : '';
+                const namaProgram = elNamaProgram ? elNamaProgram.value : '';
+                const tempat = elTempat ? elTempat.value : '';
+                const anjuran = elAnjuran ? elAnjuran.value : '';
+                const jenisCuti = elJenisCuti ? elJenisCuti.value : '';
+                const catatan = elCatatan ? elCatatan.value : '';
+
+                // Validation
+                if (!idGuru) { showError('Sila pilih nama guru'); return; }
+                if (!jenis) { showError('Sila pilih jenis keberadaan'); return; }
+                if (!tarikhMula) { showError('Sila masukkan tarikh mula'); return; }
+                if (!tarikhTamat) { showError('Sila masukkan tarikh tamat'); return; }
+                if (new Date(tarikhTamat) < new Date(tarikhMula)) { showError('Tarikh tamat tidak boleh lebih awal dari tarikh mula');
+                    return; }
+                if (jenis === 'Cuti' && !jenisCuti) { showError('Sila pilih jenis cuti'); return; }
+                if ((jenis === 'Rasmi Dalaman' || jenis === 'Keluar Waktu Bekerja') && (!masaMula || !masaTamat)) {
+                    showError('Sila masukkan masa mula dan tamat');
+                    return;
+                }
+                if ((jenis === 'Rasmi Dalaman' || jenis === 'Rasmi Luar') && !namaProgram) {
+                    showError('Sila masukkan nama program');
+                    return;
+                }
+                if (jenis === 'Rasmi Luar' && !tempat) { showError('Sila masukkan tempat'); return; }
+
+                showError('');
+                const btn = document.getElementById('fSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+                try {
+                    const guruDipilih = state.guru.find(g => g.id_Guru === idGuru);
+                    const payload = {
+                        id_Guru: idGuru,
+                        Nama_Guru: guruDipilih?.Nama || '',
+                        Jenis_Keberadaan: jenis,
+                        Jenis_Cuti: jenisCuti,
+                        Tarikh_Mula: tarikhMula,
+                        Tarikh_Tamat: tarikhTamat,
+                        Masa_Mula: masaMula,
+                        Masa_Tamat: masaTamat,
+                        Nama_Program: namaProgram,
+                        Tempat: tempat,
+                        Anjuran: anjuran,
+                        Catatan: catatan,
+                    };
+                    const res = await tambahKeberadaan(payload);
+                    if (res.status === 'success') {
+                        showSuccess('Rekod berjaya disimpan!');
+                        state.form = { idGuru: '', jenis: '', jenisCuti: '', tarikhMula: '', tarikhTamat: '', masaMula: '',
+                            masaTamat: '', namaProgram: '', tempat: '', anjuran: '', catatan: '' };
+                        await refreshData();
+                        renderContent();
+                    } else {
+                        showError('Gagal menyimpan rekod. Sila cuba lagi.');
+                    }
+                } catch (e) {
+                    showError('Ralat sambungan. Sila cuba lagi.');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Rekod';
+                }
+            });
+
+            // Initial toggle
+            toggleFields();
+            // Sync state
+            elNama.addEventListener('change', () => state.form.idGuru = elNama.value);
+            elJenis.addEventListener('change', () => state.form.jenis = elJenis.value);
+            elTarikhMula.addEventListener('change', () => state.form.tarikhMula = elTarikhMula.value);
+            elTarikhTamat.addEventListener('change', () => state.form.tarikhTamat = elTarikhTamat.value);
+            if (elMasaMula) elMasaMula.addEventListener('change', () => state.form.masaMula = elMasaMula.value);
+            if (elMasaTamat) elMasaTamat.addEventListener('change', () => state.form.masaTamat = elMasaTamat.value);
+            if (elNamaProgram) elNamaProgram.addEventListener('change', () => state.form.namaProgram = elNamaProgram.value);
+            if (elTempat) elTempat.addEventListener('change', () => state.form.tempat = elTempat.value);
+            if (elAnjuran) elAnjuran.addEventListener('change', () => state.form.anjuran = elAnjuran.value);
+            if (elJenisCuti) elJenisCuti.addEventListener('change', () => state.form.jenisCuti = elJenisCuti.value);
+            if (elCatatan) elCatatan.addEventListener('change', () => state.form.catatan = elCatatan.value);
+        }
+
+        // =====================================================================
+        // 8. VIEW: DASHBOARD ADMIN
+        // =====================================================================
+        function renderDashboard(container) {
+            const { guru, keberadaan } = state;
+            const today = getTodayString();
+            const now = new Date();
+
+            const todayDate = new Date(today);
+            todayDate.setHours(0, 0, 0, 0);
+
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+            const isInRange = (k, from, to) => {
+                const mula = new Date(k.Tarikh_Mula);
+                const tamat = new Date(k.Tarikh_Tamat);
+                return mula <= to && tamat >= from;
+            };
+
+            const hariIni = keberadaan.filter(k => isInRange(k, todayDate, todayDate));
+            const mingguIni = keberadaan.filter(k => isInRange(k, startOfWeek, now));
+            const bulanIni = keberadaan.filter(k => isInRange(k, startOfMonth, now));
+            const tahunIni = keberadaan.filter(k => isInRange(k, startOfYear, now));
+
+            const pecahan = {};
+            hariIni.forEach(k => { pecahan[k.Jenis_Keberadaan] = (pecahan[k.Jenis_Keberadaan] || 0) + 1; });
+
+            const statCards = [
+                { label: 'Hari Ini', value: hariIni.length, icon: 'fa-calendar-day', color: 'bg-blue-50 text-blue-700',
+                    border: 'border-blue-200' },
+                { label: 'Minggu Ini', value: mingguIni.length, icon: 'fa-clock', color: 'bg-purple-50 text-purple-700',
+                    border: 'border-purple-200' },
+                { label: 'Bulan Ini', value: bulanIni.length, icon: 'fa-book', color: 'bg-pink-50 text-pink-700',
+                    border: 'border-pink-200' },
+                { label: 'Tahun Ini', value: tahunIni.length, icon: 'fa-chart-line', color: 'bg-amber-50 text-amber-700',
+                    border: 'border-amber-200' },
+                { label: 'Jumlah Guru', value: guru.length, icon: 'fa-users', color: 'bg-green-50 text-green-700',
+                    border: 'border-green-200' },
+            ];
+
+            container.innerHTML = `
+                    <div class="space-y-6">
+                        <div>
+                            <h2 class="page-header">Dashboard</h2>
+                            <p class="page-subheader">${now.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                            ${statCards.map(s => `
+                                <div class="stat-card border ${s.border}">
+                                    <div class="inline-flex p-2 rounded-md ${s.color} mb-3">
+                                        <i class="fas ${s.icon}"></i>
+                                    </div>
+                                    <div class="text-2xl font-bold">${s.value}</div>
+                                    <div class="text-xs text-muted-foreground">${s.label}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">Pecahan Hari Ini</h3>
+                                ${Object.keys(pecahan).length === 0 ? `
+                                    <div class="text-center py-6 text-muted-foreground text-sm">
+                                        <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2">
+                                            <i class="fas fa-users text-green-500"></i>
+                                        </div>
+                                        Tiada rekod hari ini
+                                    </div>
+                                ` : `
+                                    <div class="space-y-3">
+                                        ${Object.entries(pecahan).map(([jenis, bil]) => `
+                                            <div>
+                                                <div class="flex justify-between items-center mb-1">
+                                                    <span class="text-xs text-muted-foreground">${jenis}</span>
+                                                    <span class="text-xs font-medium">${bil} guru</span>
+                                                </div>
+                                                <div class="h-2 bg-muted rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full bg-[hsl(var(--biru))]" style="width: ${(bil / hariIni.length) * 100}%"></div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">Senarai Guru Hari Ini ${hariIni.length > 0 ? `<span class="ml-2 text-xs font-normal text-muted-foreground">(${hariIni.length} orang)</span>` : ''}</h3>
+                                ${hariIni.length === 0 ? `
+                                    <div class="text-center py-6 text-muted-foreground text-sm">Tiada guru yang perlu relief hari ini</div>
+                                ` : `
+                                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                                        ${hariIni.map(k => `
+                                            <div class="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                                                <div>
+                                                    <div class="text-sm font-medium">${k.Nama_Guru}</div>
+                                                    <div class="text-xs text-muted-foreground">${formatTarikh(k.Tarikh_Mula)}${k.Tarikh_Mula !== k.Tarikh_Tamat ? ` — ${formatTarikh(k.Tarikh_Tamat)}` : ''}</div>
+                                                </div>
+                                                <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(k.Jenis_Keberadaan)}">${k.Jenis_Keberadaan}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        // =====================================================================
+        // 9. VIEW: URUS GURU
+        // =====================================================================
+        function renderUrusGuru(container) {
+            const { guru } = state;
+            const carian = state.filterCarian || '';
+
+            const guruTapis = guru
+                .filter(g => g.Nama.toLowerCase().includes(carian.toLowerCase()) || g.Jawatan.toLowerCase().includes(carian
+                    .toLowerCase()))
+                .sort((a, b) => a.Nama.localeCompare(b.Nama));
+
+            container.innerHTML = `
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 class="page-header">Urus Guru &amp; Staf</h2>
+                                <p class="page-subheader">Senarai ${guru.length} guru dan staf berdaftar</p>
+                            </div>
+                            <button id="btnTambahGuru" class="bg-[hsl(var(--biru))] hover:bg-[hsl(var(--biru-muda))] text-white rounded-md px-4 py-2 text-sm flex items-center gap-1.5 transition">
+                                <i class="fas fa-plus"></i> Tambah Guru
+                            </button>
+                        </div>
+
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                            <input type="text" id="carianGuru" value="${carian}" placeholder="Cari nama atau jawatan..." class="w-full border border-border rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                        </div>
+
+                        <div class="bg-white rounded-lg border border-border shadow-sm overflow-hidden">
+                            <div class="p-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                                <i class="fas fa-users text-muted-foreground"></i>
+                                <span class="text-sm font-medium">${guruTapis.length} guru dipaparkan</span>
+                            </div>
+                            ${guruTapis.length === 0 ? `
+                                <div class="text-center py-10 text-muted-foreground text-sm">${carian ? 'Tiada guru dijumpai' : 'Belum ada guru berdaftar'}</div>
+                            ` : `
+                                <div class="divide-y divide-border">
+                                    ${guruTapis.map(g => `
+                                        <div class="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-full bg-[hsl(var(--biru-cerah))] flex items-center justify-center text-[hsl(var(--biru))] font-semibold text-xs">
+                                                    ${g.Nama.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">${g.Nama}</div>
+                                                    <div class="text-xs text-muted-foreground">${g.Jawatan} · ${g.id_Guru}</div>
+                                                </div>
+                                            </div>
+                                            <button class="btnPadamGuru text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-md p-1.5 transition" data-id="${g.id_Guru}" data-nama="${g.Nama}">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+
+            // Event: carian
+            document.getElementById('carianGuru').addEventListener('input', (e) => {
+                state.filterCarian = e.target.value;
+                renderContent();
+            });
+
+            // Event: tambah guru
+            document.getElementById('btnTambahGuru').addEventListener('click', () => {
+                const nama = prompt('Masukkan nama penuh guru:');
+                if (!nama || !nama.trim()) return;
+                const jawatan = prompt('Masukkan jawatan:');
+                if (!jawatan || !jawatan.trim()) return;
+                tambahGuru({ Nama: nama.trim(), Jawatan: jawatan.trim() })
+                    .then(async res => {
+                        if (res.status === 'success') {
+                            await refreshData();
+                            renderContent();
+                        } else {
+                            alert('Gagal menambah guru.');
+                        }
+                    })
+                    .catch(() => alert('Ralat sambungan.'));
+            });
+
+            // Event: padam guru
+            document.querySelectorAll('.btnPadamGuru').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const nama = btn.dataset.nama;
+                    showConfirm(
+                        `Padam Guru: ${nama}`,
+                        `Adakah anda pasti mahu memadam <strong>${nama}</strong>? Semua rekod keberadaan berkaitan masih akan kekal.`,
+                        async () => {
+                            const res = await padamGuru(id);
+                            if (res.status === 'success') {
+                                await refreshData();
+                                renderContent();
+                            } else {
+                                alert('Gagal memadam guru.');
+                            }
+                        }
+                    );
+                });
+            });
+        }
+
+        // =====================================================================
+        // 10. VIEW: URUS KEBERADAAN
+        // =====================================================================
+        function renderUrusKeberadaan(container) {
+            const { keberadaan, tetapan } = state;
+            const carian = state.filterCarian || '';
+            const filterJenis = state.filterJenis || 'semua';
+            const tarikhMula = state.filterTarikhMula || '';
+            const tarikhTamat = state.filterTarikhTamat || '';
+
+            let dataTapis = keberadaan.filter(k => {
+                const matchCarian = k.Nama_Guru.toLowerCase().includes(carian.toLowerCase());
+                const matchJenis = filterJenis === 'semua' || k.Jenis_Keberadaan === filterJenis;
+                let matchTarikh = true;
+                if (tarikhMula) {
+                    const mula = new Date(tarikhMula);
+                    const tamat = tarikhTamat ? new Date(tarikhTamat) : new Date(tarikhMula);
+                    const kMula = new Date(k.Tarikh_Mula);
+                    const kTamat = new Date(k.Tarikh_Tamat);
+                    matchTarikh = kMula <= tamat && kTamat >= mula;
+                }
+                return matchCarian && matchJenis && matchTarikh;
+            }).sort((a, b) => new Date(b.Tarikh_Rekod || b.Tarikh_Mula).getTime() - new Date(a.Tarikh_Rekod || a.Tarikh_Mula)
+                .getTime());
+
+            container.innerHTML = `
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 class="page-header">Urus Rekod Keberadaan</h2>
+                                <p class="page-subheader">Semak, tapis dan padam rekod keberadaan guru</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="exportExcelBtn" class="border border-border rounded-md px-3 py-1.5 text-xs flex items-center gap-1.5 hover:bg-muted transition">
+                                    <i class="fas fa-table"></i> Export Excel
+                                </button>
+                                <button id="exportPdfBtn" class="border border-border rounded-md px-3 py-1.5 text-xs flex items-center gap-1.5 hover:bg-muted transition">
+                                    <i class="fas fa-file-pdf"></i> Export PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter -->
+                        <div class="bg-white rounded-lg border border-border p-4 shadow-sm space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div class="relative">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                                    <input type="text" id="filterCarian" value="${carian}" placeholder="Cari nama guru..." class="w-full border border-border rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                                <select id="filterJenis" class="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    <option value="semua" ${filterJenis === 'semua' ? 'selected' : ''}>Semua Jenis</option>
+                                    ${JENIS_KEBERADAAN.map(j => `<option value="${j}" ${filterJenis === j ? 'selected' : ''}>${j}</option>`).join('')}
+                                </select>
+                                <div>
+                                    <label class="text-xs text-muted-foreground">Dari Tarikh</label>
+                                    <input type="date" id="filterTarikhMula" value="${tarikhMula}" class="w-full border border-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-muted-foreground">Hingga Tarikh</label>
+                                    <input type="date" id="filterTarikhTamat" value="${tarikhTamat}" class="w-full border border-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted-foreground">${dataTapis.length} rekod dijumpai</div>
+                        </div>
+
+                        <!-- Senarai -->
+                        <div class="bg-white rounded-lg border border-border shadow-sm overflow-hidden">
+                            ${dataTapis.length === 0 ? `
+                                <div class="text-center py-10 text-sm text-muted-foreground">Tiada rekod dijumpai</div>
+                            ` : `
+                                <div class="divide-y divide-border">
+                                    ${dataTapis.map(k => `
+                                        <div class="p-4 hover:bg-muted/20 transition">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span class="font-medium text-sm">${k.Nama_Guru}</span>
+                                                        <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(k.Jenis_Keberadaan)}">${k.Jenis_Keberadaan}</span>
+                                                        ${k.Jenis_Cuti ? `<span class="text-xs px-2 py-0.5 rounded-full border border-border">${k.Jenis_Cuti}</span>` : ''}
+                                                    </div>
+                                                    <div class="text-xs text-muted-foreground mt-1">
+                                                        ${formatTarikh(k.Tarikh_Mula)}${k.Tarikh_Mula !== k.Tarikh_Tamat ? ` — ${formatTarikh(k.Tarikh_Tamat)}` : ''}
+                                                        ${k.Masa_Mula ? ` · ${k.Masa_Mula}–${k.Masa_Tamat}` : ''}
+                                                        ${k.Nama_Program ? ` · ${k.Nama_Program}` : ''}
+                                                        ${k.Tempat ? ` · ${k.Tempat}` : ''}
+                                                        ${k.Catatan ? ` · ${k.Catatan}` : ''}
+                                                    </div>
+                                                    <div class="text-xs text-muted-foreground/60 mt-0.5">Direkod: ${k.Tarikh_Rekod || '-'}</div>
+                                                </div>
+                                                <button class="btnPadamRekod text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-md p-1.5 transition flex-shrink-0" data-id="${k.id_keberadaan}" data-nama="${k.Nama_Guru}">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+
+            // Event bindings
+            document.getElementById('filterCarian').addEventListener('input', (e) => {
+                state.filterCarian = e.target.value;
+                renderContent();
+            });
+            document.getElementById('filterJenis').addEventListener('change', (e) => {
+                state.filterJenis = e.target.value;
+                renderContent();
+            });
+            document.getElementById('filterTarikhMula').addEventListener('change', (e) => {
+                state.filterTarikhMula = e.target.value;
+                renderContent();
+            });
+            document.getElementById('filterTarikhTamat').addEventListener('change', (e) => {
+                state.filterTarikhTamat = e.target.value;
+                renderContent();
+            });
+
+            // Padam rekod
+            document.querySelectorAll('.btnPadamRekod').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const nama = btn.dataset.nama;
+                    showConfirm(
+                        'Padam Rekod',
+                        `Adakah anda pasti mahu memadam rekod untuk <strong>${nama}</strong>? Tindakan ini tidak boleh dibatalkan.`,
+                        async () => {
+                            const res = await padamKeberadaan(id);
+                            if (res.status === 'success') {
+                                await refreshData();
+                                renderContent();
+                            } else {
+                                alert('Gagal memadam rekod.');
+                            }
+                        }
+                    );
+                });
+            });
+
+            // Export Excel (CSV)
+            document.getElementById('exportExcelBtn').addEventListener('click', () => {
+                const headers = ['ID', 'Nama Guru', 'Jenis Keberadaan', 'Jenis Cuti', 'Tarikh Mula', 'Tarikh Tamat',
+                    'Masa Mula', 'Masa Tamat', 'Nama Program', 'Tempat', 'Anjuran', 'Catatan', 'Tarikh Rekod'
+                ];
+                const rows = dataTapis.map(k => [
+                    k.id_keberadaan, k.Nama_Guru, k.Jenis_Keberadaan, k.Jenis_Cuti,
+                    k.Tarikh_Mula, k.Tarikh_Tamat, k.Masa_Mula, k.Masa_Tamat,
+                    k.Nama_Program, k.Tempat, k.Anjuran, k.Catatan, k.Tarikh_Rekod
+                ]);
+                const csv = [headers, ...rows].map(r => r.map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(
+                    ',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Rekod_Keberadaan_${getTodayString()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Export PDF
+            document.getElementById('exportPdfBtn').addEventListener('click', () => {
+                const namaSekolah = tetapan?.nama_sekolah || 'Sistem Keberadaan Guru';
+                const tarikhCetak = new Date().toLocaleDateString('ms-MY', { day: '2-digit', month: 'long',
+                    year: 'numeric' });
+                let html = `
+                        <!DOCTYPE html><html><head><meta charset="UTF-8">
+                        <title>Laporan Keberadaan</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #1a1a2e; }
+                            h1 { font-size: 16px; color: #1d4ed8; margin: 0; }
+                            h2 { font-size: 12px; color: #666; font-weight: normal; margin: 4px 0 0; }
+                            .header { border-bottom: 2px solid #1d4ed8; padding-bottom: 12px; margin-bottom: 16px; }
+                            .meta { font-size: 10px; color: #666; margin-bottom: 16px; }
+                            table { width: 100%; border-collapse: collapse; }
+                            th { background: #1d4ed8; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
+                            td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 10px; }
+                            tr:nth-child(even) { background: #f8fafc; }
+                            .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; }
+                            .badge-rasmi-dalaman { background: #dbeafe; color: #1d4ed8; }
+                            .badge-rasmi-luar { background: #ede9fe; color: #7c3aed; }
+                            .badge-keluar { background: #fef3c7; color: #d97706; }
+                            .badge-cuti { background: #fce7f3; color: #db2777; }
+                            @media print { body { margin: 10px; } }
+                        </style></head><body>
+                        <div class="header">
+                            <h1>${namaSekolah}</h1>
+                            <h2>Laporan Rekod Keberadaan Guru &amp; Staf</h2>
+                        </div>
+                        <div class="meta">
+                            Tarikh Cetak: ${tarikhCetak} &nbsp;|&nbsp; Jumlah Rekod: ${dataTapis.length}
+                            ${filterJenis !== 'semua' ? ` &nbsp;|&nbsp; Jenis: ${filterJenis}` : ''}
+                            ${tarikhMula ? ` &nbsp;|&nbsp; Tempoh: ${formatTarikh(tarikhMula)}${tarikhTamat ? ` — ${formatTarikh(tarikhTamat)}` : ''}` : ''}
+                        </div>
+                        <table>
+                            <thead><tr>
+                                <th>Bil</th><th>Nama Guru</th><th>Jenis</th><th>Tarikh Mula</th><th>Tarikh Tamat</th>
+                                <th>Masa</th><th>Program/Catatan</th><th>Tempat</th>
+                            </tr></thead>
+                            <tbody>
+                    `;
+                dataTapis.forEach((k, i) => {
+                    const badgeClass = k.Jenis_Keberadaan === 'Rasmi Dalaman' ? 'badge-rasmi-dalaman' :
+                        k.Jenis_Keberadaan === 'Rasmi Luar' ? 'badge-rasmi-luar' :
+                        k.Jenis_Keberadaan === 'Keluar Waktu Bekerja' ? 'badge-keluar' : 'badge-cuti';
+                    html += `
+                            <tr>
+                                <td>${i+1}</td>
+                                <td>${k.Nama_Guru}</td>
+                                <td><span class="badge ${badgeClass}">${k.Jenis_Keberadaan}${k.Jenis_Cuti ? ` - ${k.Jenis_Cuti}` : ''}</span></td>
+                                <td>${formatTarikh(k.Tarikh_Mula)}</td>
+                                <td>${formatTarikh(k.Tarikh_Tamat)}</td>
+                                <td>${k.Masa_Mula && k.Masa_Tamat ? `${k.Masa_Mula}—${k.Masa_Tamat}` : '-'}</td>
+                                <td>${k.Nama_Program || k.Catatan || '-'}</td>
+                                <td>${k.Tempat || '-'}</td>
+                            </tr>
+                        `;
+                });
+                html += `
+                            </tbody>
+                        </table>
+                        <script>window.onload = () => window.print();<\/script>
+                        </body></html>
+                    `;
+                const w = window.open('', '_blank');
+                if (w) { w.document.write(html);
+                    w.document.close(); }
+            });
+        }
+
+        // =====================================================================
+        // 11. VIEW: ANALISIS HARIAN
+        // =====================================================================
+        function renderAnalisisHarian(container) {
+            const { keberadaan } = state;
+            const tarikhPilih = state.tarikhPilih || getTodayString();
+
+            const data = keberadaan.filter(k => {
+                const t = new Date(tarikhPilih);
+                t.setHours(0, 0, 0, 0);
+                const mula = new Date(k.Tarikh_Mula);
+                const tamat = new Date(k.Tarikh_Tamat);
+                mula.setHours(0, 0, 0, 0);
+                tamat.setHours(0, 0, 0, 0);
+                return t >= mula && t <= tamat;
+            });
+
+            const pecahan = {};
+            data.forEach(k => { pecahan[k.Jenis_Keberadaan] = (pecahan[k.Jenis_Keberadaan] || 0) + 1; });
+
+            const JENIS_COLORS = {
+                'Rasmi Dalaman': '#1d4ed8',
+                'Rasmi Luar': '#7c3aed',
+                'Keluar Waktu Bekerja': '#d97706',
+                'Cuti': '#db2777',
+            };
+
+            container.innerHTML = `
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 class="page-header">Analisis Harian</h2>
+                                <p class="page-subheader">Rekod keberadaan guru pada tarikh tertentu</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm whitespace-nowrap">Pilih Tarikh:</span>
+                                <input type="date" id="analisisHarianDate" value="${tarikhPilih}" class="w-40 border border-border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">Jumlah Relief Diperlukan</h3>
+                                <div class="text-5xl font-bold text-[hsl(var(--biru))] text-center py-4">${data.length}</div>
+                                <p class="text-xs text-muted-foreground text-center">guru tidak boleh mengajar</p>
+                            </div>
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm lg:col-span-2">
+                                <h3 class="font-semibold text-sm mb-4">Pecahan Mengikut Jenis</h3>
+                                ${Object.keys(pecahan).length === 0 ? `
+                                    <div class="text-center py-4 text-sm text-muted-foreground">Tiada rekod</div>
+                                ` : `
+                                    <div class="space-y-3">
+                                        ${Object.entries(pecahan).map(([jenis, bil]) => `
+                                            <div>
+                                                <div class="flex justify-between mb-1">
+                                                    <span class="text-sm flex items-center gap-2">
+                                                        <span class="w-2.5 h-2.5 rounded-full inline-block" style="background: ${JENIS_COLORS[jenis] || '#6b7280'}"></span>
+                                                        ${jenis}
+                                                    </span>
+                                                    <span class="text-sm font-semibold">${bil} (${Math.round((bil / data.length) * 100)}%)</span>
+                                                </div>
+                                                <div class="h-3 bg-muted rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full transition-all" style="width: ${(bil / data.length) * 100}%; background: ${JENIS_COLORS[jenis] || '#6b7280'}"></div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg border border-border shadow-sm">
+                            <div class="p-4 border-b border-border flex items-center gap-2">
+                                <i class="fas fa-users text-muted-foreground"></i>
+                                <span class="font-semibold text-sm">Senarai Guru — ${formatTarikh(tarikhPilih)}</span>
+                                <span class="text-xs text-muted-foreground">(${data.length} rekod)</span>
+                            </div>
+                            ${data.length === 0 ? `
+                                <div class="text-center py-10 text-muted-foreground text-sm">Tiada rekod pada tarikh ini</div>
+                            ` : `
+                                <div class="divide-y divide-border">
+                                    ${data.map(k => `
+                                        <div class="p-4 hover:bg-muted/20 transition">
+                                            <div class="flex items-start justify-between gap-3 flex-wrap">
+                                                <div class="flex-1">
+                                                    <div class="font-medium text-sm">${k.Nama_Guru}</div>
+                                                    <div class="text-xs text-muted-foreground mt-0.5">${formatTarikh(k.Tarikh_Mula)}${k.Tarikh_Mula !== k.Tarikh_Tamat ? ` — ${formatTarikh(k.Tarikh_Tamat)}` : ''}</div>
+                                                    <div class="mt-2 space-y-1 text-xs text-muted-foreground">
+                                                        ${(k.Masa_Mula || k.Masa_Tamat) ? `<div><i class="fas fa-clock w-4"></i> ${k.Masa_Mula} — ${k.Masa_Tamat}</div>` : ''}
+                                                        ${k.Nama_Program ? `<div><i class="fas fa-file-alt w-4"></i> ${k.Nama_Program}</div>` : ''}
+                                                        ${k.Tempat ? `<div><i class="fas fa-map-marker-alt w-4"></i> ${k.Tempat}${k.Anjuran ? ` (${k.Anjuran})` : ''}</div>` : ''}
+                                                        ${k.Catatan ? `<div><i class="fas fa-sticky-note w-4"></i> ${k.Catatan}</div>` : ''}
+                                                    </div>
+                                                </div>
+                                                <div class="flex flex-col items-end gap-1.5">
+                                                    <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(k.Jenis_Keberadaan)}">${k.Jenis_Keberadaan}</span>
+                                                    ${k.Jenis_Cuti ? `<span class="text-xs px-2 py-0.5 rounded-full border border-border">${k.Jenis_Cuti}</span>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+
+            document.getElementById('analisisHarianDate').addEventListener('change', (e) => {
+                state.tarikhPilih = e.target.value || getTodayString();
+                renderContent();
+            });
+        }
+
+        // =====================================================================
+        // 12. VIEW: ANALISIS BULANAN
+        // =====================================================================
+        function renderAnalisisBulanan(container) {
+            const { keberadaan, guru } = state;
+            const bulan = state.analisisBulan;
+            const tahun = state.analisisTahun;
+            const tabView = state.analisisTab || 'kalendar';
+
+            const tahunList = [...new Set(keberadaan.map(k => new Date(k.Tarikh_Mula).getFullYear()))].sort((a, b) => b - a);
+            if (!tahunList.includes(new Date().getFullYear())) tahunList.unshift(new Date().getFullYear());
+
+            const start = new Date(tahun, bulan, 1);
+            const end = new Date(tahun, bulan + 1, 0);
+            end.setHours(23, 59, 59, 999);
+            const dataBulan = keberadaan.filter(k => {
+                const mula = new Date(k.Tarikh_Mula);
+                const tamat = new Date(k.Tarikh_Tamat);
+                return mula <= end && tamat >= start;
+            });
+
+            // Kalendar
+            const days = getDaysInMonth(tahun, bulan);
+            const kalendarData = Array.from({ length: days }, (_, i) => {
+                const hari = i + 1;
+                const tarikh = new Date(tahun, bulan, hari);
+                tarikh.setHours(0, 0, 0, 0);
+                const count = dataBulan.filter(k => {
+                    const mula = new Date(k.Tarikh_Mula);
+                    const tamat = new Date(k.Tarikh_Tamat);
+                    mula.setHours(0, 0, 0, 0);
+                    tamat.setHours(0, 0, 0, 0);
+                    return tarikh >= mula && tarikh <= tamat;
+                }).length;
+                return { hari, count };
+            });
+
+            const maxCount = Math.max(...kalendarData.map(d => d.count), 1);
+
+            const getHeatColor = (count) => {
+                if (count === 0) return 'bg-gray-50 text-gray-400';
+                const ratio = count / maxCount;
+                if (ratio < 0.25) return 'bg-blue-100 text-blue-700';
+                if (ratio < 0.5) return 'bg-blue-200 text-blue-800';
+                if (ratio < 0.75) return 'bg-blue-300 text-blue-900';
+                return 'bg-blue-500 text-white';
+            };
+
+            const firstDay = getFirstDayOfMonth(tahun, bulan);
+
+            // Individu
+            const dataIndividu = {};
+            dataBulan.forEach(k => {
+                if (!dataIndividu[k.id_Guru]) dataIndividu[k.id_Guru] = { nama: k.Nama_Guru, rekod: [], jenis: {} };
+                dataIndividu[k.id_Guru].rekod.push(k);
+                dataIndividu[k.id_Guru].jenis[k.Jenis_Keberadaan] = (dataIndividu[k.id_Guru].jenis[k.Jenis_Keberadaan] ||
+                    0) + 1;
+            });
+            const individuArr = Object.entries(dataIndividu).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.rekod.length - a
+                .rekod.length);
+
+            // Jawatan
+            const dataJawatan = {};
+            dataBulan.forEach(k => {
+                const g = guru.find(g => g.id_Guru === k.id_Guru);
+                const jawatan = g?.Jawatan || 'Tidak Diketahui';
+                dataJawatan[jawatan] = (dataJawatan[jawatan] || 0) + 1;
+            });
+            const jawatanArr = Object.entries(dataJawatan).sort((a, b) => b[1] - a[1]);
+
+            container.innerHTML = `
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 class="page-header">Analisis Bulanan</h2>
+                                <p class="page-subheader">Trend dan kekerapan keberadaan guru mengikut bulan</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">Bulan:</span>
+                                <select id="abBulan" class="border border-border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    ${Array.from({length:12}, (_,i) => `<option value="${i}" ${i===bulan?'selected':''}>${getBulanName(i)}</option>`).join('')}
+                                </select>
+                                <select id="abTahun" class="border border-border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    ${tahunList.map(t => `<option value="${t}" ${t===tahun?'selected':''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="stat-card"><div class="text-2xl font-bold text-[hsl(var(--biru))]">${dataBulan.length}</div><div class="text-xs text-muted-foreground">Jumlah Rekod</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-[hsl(var(--merah-jambu))]">${individuArr.length}</div><div class="text-xs text-muted-foreground">Guru Terlibat</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-amber-600">${kalendarData.filter(d=>d.count>0).length}</div><div class="text-xs text-muted-foreground">Hari Aktif</div></div>
+                        </div>
+
+                        <div class="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+                            ${['kalendar','individu','jawatan'].map(t => `
+                                <button data-abtab="${t}" class="px-3 py-1.5 rounded-md text-xs font-medium transition ${tabView===t?'bg-white text-[hsl(var(--biru))] shadow-sm':'text-muted-foreground hover:text-foreground'}">
+                                    ${t==='kalendar'?'Kalendar Visual':t==='individu'?'Analisis Individu':'Analisis Jawatan'}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        ${tabView === 'kalendar' ? `
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">${getBulanName(bulan)} ${tahun}</h3>
+                                <div class="grid grid-cols-7 gap-1 mb-1">
+                                    ${['Isn','Sel','Rab','Kha','Jum','Sab','Ahd'].map(d => `<div class="text-center text-xs font-medium text-muted-foreground py-1">${d}</div>`).join('')}
+                                </div>
+                                <div class="grid grid-cols-7 gap-1">
+                                    ${Array.from({length: firstDay}, (_,i) => `<div key="empty-${i}"></div>`).join('')}
+                                    ${kalendarData.map(({hari, count}) => `
+                                        <div class="aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium cursor-default transition-colors ${getHeatColor(count)}">
+                                            <div>${hari}</div>
+                                            ${count > 0 ? `<div class="text-[10px] font-bold">${count}</div>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
+                                    <span>Intensiti:</span>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-gray-50 border rounded"></div><span>0</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-100 rounded"></div><span>Rendah</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-300 rounded"></div><span>Sederhana</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-500 rounded"></div><span>Tinggi</span></div>
+                                </div>
+                            </div>
+                        ` : tabView === 'individu' ? `
+                            <div class="bg-white rounded-lg border border-border shadow-sm">
+                                <div class="p-4 border-b border-border"><span class="font-semibold text-sm">Kekerapan Rekod Individu — ${getBulanName(bulan)} ${tahun}</span></div>
+                                ${individuArr.length === 0 ? `<div class="text-center py-8 text-sm text-muted-foreground">Tiada rekod bulan ini</div>` : `
+                                    <div class="divide-y divide-border">
+                                        ${individuArr.map((d, idx) => `
+                                            <div class="p-4">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs font-bold text-muted-foreground w-5">${idx+1}.</span>
+                                                        <span class="font-medium text-sm">${d.nama}</span>
+                                                    </div>
+                                                    <span class="text-sm font-bold text-[hsl(var(--biru))]">${d.rekod.length} rekod</span>
+                                                </div>
+                                                <div class="flex flex-wrap gap-1.5 ml-7">
+                                                    ${Object.entries(d.jenis).map(([jenis, bil]) => `
+                                                        <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(jenis)}">${jenis}: ${bil}</span>
+                                                    `).join('')}
+                                                </div>
+                                                <div class="mt-2 ml-7 space-y-1">
+                                                    ${d.rekod.slice(0,3).map(r => `
+                                                        <div class="text-xs text-muted-foreground flex items-center gap-2">
+                                                            <span>${formatTarikh(r.Tarikh_Mula)}${r.Tarikh_Mula !== r.Tarikh_Tamat ? ` — ${formatTarikh(r.Tarikh_Tamat)}` : ''}</span>
+                                                            ${r.Nama_Program ? `<span class="text-muted-foreground">· ${r.Nama_Program}</span>` : ''}
+                                                        </div>
+                                                    `).join('')}
+                                                    ${d.rekod.length > 3 ? `<div class="text-xs text-muted-foreground">...dan ${d.rekod.length - 3} rekod lagi</div>` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        ` : `
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">Pecahan Mengikut Jawatan — ${getBulanName(bulan)} ${tahun}</h3>
+                                ${jawatanArr.length === 0 ? `<div class="text-center py-8 text-sm text-muted-foreground">Tiada rekod bulan ini</div>` : `
+                                    <div class="space-y-3">
+                                        ${jawatanArr.map(([jawatan, bil]) => `
+                                            <div>
+                                                <div class="flex justify-between mb-1">
+                                                    <span class="text-sm">${jawatan}</span>
+                                                    <span class="text-sm font-semibold">${bil} rekod</span>
+                                                </div>
+                                                <div class="h-3 bg-muted rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full bg-[hsl(var(--merah-jambu))]" style="width: ${(bil / dataBulan.length) * 100}%"></div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        `}
+                    </div>
+                `;
+
+            // Event bindings
+            document.getElementById('abBulan').addEventListener('change', (e) => {
+                state.analisisBulan = parseInt(e.target.value);
+                renderContent();
+            });
+            document.getElementById('abTahun').addEventListener('change', (e) => {
+                state.analisisTahun = parseInt(e.target.value);
+                renderContent();
+            });
+            document.querySelectorAll('[data-abtab]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.analisisTab = btn.dataset.abtab;
+                    renderContent();
+                });
+            });
+        }
+
+        // =====================================================================
+        // 13. VIEW: ANALISIS TAHUNAN
+        // =====================================================================
+        function renderAnalisisTahunan(container) {
+            const { keberadaan, guru } = state;
+            const tahun = state.analisisTahun;
+            const tabView = state.analisisTahunanTab || 'trend';
+
+            const tahunList = [...new Set(keberadaan.map(k => new Date(k.Tarikh_Mula).getFullYear()))].sort((a, b) => b - a);
+            if (!tahunList.includes(new Date().getFullYear())) tahunList.unshift(new Date().getFullYear());
+
+            const dataTahun = keberadaan.filter(k => new Date(k.Tarikh_Mula).getFullYear() === tahun);
+
+            // Bulanan
+            const dataBulan = Array.from({ length: 12 }, (_, i) => {
+                const start = new Date(tahun, i, 1);
+                const end = new Date(tahun, i + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                const rekod = keberadaan.filter(k => {
+                    const mula = new Date(k.Tarikh_Mula);
+                    const tamat = new Date(k.Tarikh_Tamat);
+                    return mula <= end && tamat >= start;
+                });
+                const pecahan = {};
+                rekod.forEach(r => { pecahan[r.Jenis_Keberadaan] = (pecahan[r.Jenis_Keberadaan] || 0) + 1; });
+                return { bulan: i, nama: getBulanShort(i), rekod: rekod.length, pecahan };
+            });
+
+            const maxBulan = Math.max(...dataBulan.map(d => d.rekod), 1);
+            const bulanTertinggi = dataBulan.reduce((a, b) => a.rekod > b.rekod ? a : b);
+
+            const dominanJenis = {};
+            dataTahun.forEach(k => { dominanJenis[k.Jenis_Keberadaan] = (dominanJenis[k.Jenis_Keberadaan] || 0) + 1; });
+            const dominan = Object.entries(dominanJenis).sort((a, b) => b[1] - a[1])[0];
+
+            // Top individu
+            const topMap = {};
+            dataTahun.forEach(k => {
+                if (!topMap[k.id_Guru]) topMap[k.id_Guru] = { nama: k.Nama_Guru, count: 0, jenis: {} };
+                topMap[k.id_Guru].count++;
+                topMap[k.id_Guru].jenis[k.Jenis_Keberadaan] = (topMap[k.id_Guru].jenis[k.Jenis_Keberadaan] || 0) + 1;
+            });
+            const topIndividu = Object.entries(topMap).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.count - a.count)
+                .slice(0, 15);
+
+            // Jawatan
+            const jawatanMap = {};
+            dataTahun.forEach(k => {
+                const g = guru.find(g => g.id_Guru === k.id_Guru);
+                const j = g?.Jawatan || 'Tidak Diketahui';
+                if (!jawatanMap[j]) jawatanMap[j] = { count: 0, jenis: {} };
+                jawatanMap[j].count++;
+                jawatanMap[j].jenis[k.Jenis_Keberadaan] = (jawatanMap[j].jenis[k.Jenis_Keberadaan] || 0) + 1;
+            });
+            const jawatanArr = Object.entries(jawatanMap).map(([jawatan, v]) => ({ jawatan, ...v })).sort((a, b) => b.count -
+                a.count);
+
+            container.innerHTML = `
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h2 class="page-header">Analisis Tahunan</h2>
+                                <p class="page-subheader">Trend dan statistik keberadaan guru sepanjang tahun</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">Tahun:</span>
+                                <select id="atTahun" class="border border-border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--biru))]">
+                                    ${tahunList.map(t => `<option value="${t}" ${t===tahun?'selected':''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="stat-card"><div class="text-2xl font-bold text-[hsl(var(--biru))]">${dataTahun.length}</div><div class="text-xs text-muted-foreground">Jumlah Rekod ${tahun}</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-[hsl(var(--merah-jambu))]">${new Set(dataTahun.map(k=>k.id_Guru)).size}</div><div class="text-xs text-muted-foreground">Guru Terlibat</div></div>
+                            <div class="stat-card"><div class="text-lg font-bold text-purple-600">${getBulanName(bulanTertinggi.bulan)}</div><div class="text-xs text-muted-foreground">Bulan Tertinggi (${bulanTertinggi.rekod})</div></div>
+                            <div class="stat-card"><div class="text-sm font-bold text-amber-600">${dominan ? dominan[0] : '-'}</div><div class="text-xs text-muted-foreground">Jenis Dominan ${dominan ? `(${dominan[1]})` : ''}</div></div>
+                        </div>
+
+                        <div class="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+                            ${['trend','individu','jawatan'].map(t => `
+                                <button data-attab="${t}" class="px-3 py-1.5 rounded-md text-xs font-medium transition ${tabView===t?'bg-white text-[hsl(var(--biru))] shadow-sm':'text-muted-foreground hover:text-foreground'}">
+                                    ${t==='trend'?'Trend Bulanan':t==='individu'?'Top Individu':'Analisis Jawatan'}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        ${tabView === 'trend' ? `
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-5">Trend Keberadaan Bulanan — ${tahun}</h3>
+                                <div class="flex items-end gap-2 h-48">
+                                    ${dataBulan.map(d => `
+                                        <div class="flex-1 flex flex-col items-center gap-1">
+                                            <div class="text-xs font-semibold text-muted-foreground">${d.rekod > 0 ? d.rekod : ''}</div>
+                                            <div class="w-full flex flex-col justify-end" style="height: 160px">
+                                                <div class="w-full rounded-t-sm bg-[hsl(var(--biru))] transition-all hover:bg-[hsl(var(--biru-muda))]" style="height: ${(d.rekod / maxBulan) * 100}%; min-height: ${d.rekod > 0 ? '4px' : '0'}"></div>
+                                            </div>
+                                            <div class="text-[10px] text-muted-foreground">${d.nama}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : tabView === 'individu' ? `
+                            <div class="bg-white rounded-lg border border-border shadow-sm">
+                                <div class="p-4 border-b border-border"><span class="font-semibold text-sm">Top Individu — ${tahun}</span></div>
+                                ${topIndividu.length === 0 ? `<div class="text-center py-8 text-sm text-muted-foreground">Tiada rekod tahun ini</div>` : `
+                                    <div class="divide-y divide-border">
+                                        ${topIndividu.map((d, idx) => `
+                                            <div class="p-4 flex items-center gap-4">
+                                                <div class="text-2xl font-bold text-muted-foreground w-8 text-center">${idx+1}</div>
+                                                <div class="flex-1">
+                                                    <div class="font-medium text-sm">${d.nama}</div>
+                                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                                        ${Object.entries(d.jenis).map(([jenis, bil]) => `
+                                                            <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(jenis)}">${jenis}: ${bil}</span>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-xl font-bold text-[hsl(var(--biru))]">${d.count}</div>
+                                                    <div class="text-xs text-muted-foreground">rekod</div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        ` : `
+                            <div class="bg-white rounded-lg border border-border p-5 shadow-sm">
+                                <h3 class="font-semibold text-sm mb-4">Pecahan Mengikut Jawatan — ${tahun}</h3>
+                                ${jawatanArr.length === 0 ? `<div class="text-center py-8 text-sm text-muted-foreground">Tiada rekod tahun ini</div>` : `
+                                    <div class="space-y-4">
+                                        ${jawatanArr.map(d => `
+                                            <div>
+                                                <div class="flex justify-between mb-1.5">
+                                                    <span class="text-sm font-medium">${d.jawatan}</span>
+                                                    <span class="text-sm font-bold text-[hsl(var(--biru))]">${d.count} rekod</span>
+                                                </div>
+                                                <div class="flex flex-wrap gap-1 mb-1.5">
+                                                    ${Object.entries(d.jenis).map(([jenis, bil]) => `
+                                                        <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColor(jenis)}">${jenis}: ${bil}</span>
+                                                    `).join('')}
+                                                </div>
+                                                <div class="h-2 bg-muted rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full bg-[hsl(var(--merah-jambu))]" style="width: ${(d.count / dataTahun.length) * 100}%"></div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        `}
+                    </div>
+                `;
+
+            document.getElementById('atTahun').addEventListener('change', (e) => {
+                state.analisisTahun = parseInt(e.target.value);
+                renderContent();
+            });
+            document.querySelectorAll('[data-attab]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.analisisTahunanTab = btn.dataset.attab;
+                    renderContent();
+                });
+            });
+        }
+
+        // =====================================================================
+        // 14. CONFIRM DIALOG
+        // =====================================================================
+        function showConfirm(title, message, onOk) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').innerHTML = message;
+            document.getElementById('confirmOverlay').classList.remove('hidden');
+            state.confirmCallback = onOk;
+        }
+
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+            document.getElementById('confirmOverlay').classList.add('hidden');
+            state.confirmCallback = null;
+        });
+        document.getElementById('confirmOkBtn').addEventListener('click', async () => {
+            document.getElementById('confirmOverlay').classList.add('hidden');
+            if (state.confirmCallback) {
+                await state.confirmCallback();
+                state.confirmCallback = null;
+            }
+        });
+
+        // =====================================================================
+        // 15. REFRESH DATA
+        // =====================================================================
+        async function refreshData() {
+            state.loading = true;
+            document.getElementById('refreshBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const [guruRes, keberadaanRes, tetapanRes] = await Promise.all([
+                    getGuru(),
+                    getKeberadaan(),
+                    getTetapan()
+                ]);
+                if (guruRes.status === 'success') state.guru = guruRes.data || [];
+                if (keberadaanRes.status === 'success') state.keberadaan = keberadaanRes.data || [];
+                if (tetapanRes.status === 'success') state.tetapan = tetapanRes.data;
+                // Update header
+                if (state.tetapan) {
+                    const nama = state.tetapan.nama_sekolah || 'Sistem Keberadaan';
+                    document.getElementById('headerSchoolName').textContent = nama;
+                    if (state.tetapan.logo_sekolah) {
+                        const img = document.createElement('img');
+                        img.src = state.tetapan.logo_sekolah;
+                        img.className = 'h-10 w-10 object-contain rounded';
+                        img.onerror = () => { img.style.display = 'none'; };
+                        const container = document.getElementById('logoContainer');
+                        container.innerHTML = '';
+                        container.appendChild(img);
+                    }
+                }
+            } catch (e) {
+                console.error('Refresh error:', e);
+            }
+            state.loading = false;
+            document.getElementById('refreshBtn').innerHTML = '<i class="fas fa-sync-alt"></i>';
+        }
+
+        // =====================================================================
+        // 16. ADMIN LOGIN
+        // =====================================================================
+        const loginOverlay = document.getElementById('loginOverlay');
+        const loginPass = document.getElementById('loginPassword');
+        const loginError = document.getElementById('loginError');
+        let loginShowPass = false;
+
+        document.getElementById('adminToggleBtn').addEventListener('click', () => {
+            if (state.isAdmin) {
+                // Log keluar
+                state.isAdmin = false;
+                sessionStorage.removeItem('isAdmin');
+                state.activeTab = 'relief';
+                renderTabs();
+                renderContent();
+                document.getElementById('adminToggleLabel').textContent = 'Pentadbir';
+            } else {
+                loginOverlay.classList.remove('hidden');
+                loginPass.value = '';
+                loginError.classList.add('hidden');
+                loginPass.focus();
+            }
+        });
+
+        document.getElementById('loginCancelBtn').addEventListener('click', () => {
+            loginOverlay.classList.add('hidden');
+            loginPass.value = '';
+            loginError.classList.add('hidden');
+        });
+
+        document.getElementById('loginSubmitBtn').addEventListener('click', handleLogin);
+        loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+        document.getElementById('loginTogglePass').addEventListener('click', () => {
+            loginShowPass = !loginShowPass;
+            loginPass.type = loginShowPass ? 'text' : 'password';
+            document.querySelector('#loginTogglePass i').className = loginShowPass ? 'fas fa-eye-slash' : 'fas fa-eye';
+        });
+
+        async function handleLogin() {
+            const pass = loginPass.value.trim();
+            if (!pass) { loginError.textContent = 'Sila masukkan password';
+                loginError.classList.remove('hidden'); return; }
+            loginError.classList.add('hidden');
+            const btn = document.getElementById('loginSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyemak...';
+            try {
+                const res = await semakPassword(pass);
+                if (res.status === 'success') {
+                    state.isAdmin = true;
+                    sessionStorage.setItem('isAdmin', 'true');
+                    loginOverlay.classList.add('hidden');
+                    loginPass.value = '';
+                    document.getElementById('adminToggleLabel').textContent = 'Log Keluar Admin';
+                    state.activeTab = 'dashboard';
+                    renderTabs();
+                    renderContent();
+                } else {
+                    loginError.textContent = 'Password salah. Sila cuba lagi.';
+                    loginError.classList.remove('hidden');
+                }
+            } catch (e) {
+                loginError.textContent = 'Ralat sambungan. Sila cuba lagi.';
+                loginError.classList.remove('hidden');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Log Masuk';
+        }
+
+        // =====================================================================
+        // 17. INIT
+        // =====================================================================
+        async function init() {
+            // Check session
+            if (sessionStorage.getItem('isAdmin') === 'true') {
+                state.isAdmin = true;
+                document.getElementById('adminToggleLabel').textContent = 'Log Keluar Admin';
+                state.activeTab = 'dashboard';
+            } else {
+                state.activeTab = 'relief';
+            }
+
+            await refreshData();
+
+            // Set default tarikh
+            state.tarikhPilih = getTodayString();
+
+            renderTabs();
+            renderContent();
+
+            // Refresh button
+            document.getElementById('refreshBtn').addEventListener('click', async () => {
+                await refreshData();
+                renderContent();
+            });
+
+            // Klik luar untuk tutup login
+            loginOverlay.addEventListener('click', (e) => {
+                if (e.target === loginOverlay) {
+                    loginOverlay.classList.add('hidden');
+                    loginPass.value = '';
+                    loginError.classList.add('hidden');
+                }
+            });
+        }
+
+        // Start app
+        init();
+    </script>
+</body>
+</html>
