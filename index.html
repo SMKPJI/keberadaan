@@ -1233,8 +1233,8 @@
                 ];
                 const rows = dataTapis.map(k => [
                     k.id_keberadaan, k.Nama_Guru, k.Jenis_Keberadaan, k.Jenis_Cuti,
-                    k.Tarikh_Mula, k.Tarikh_Tamat, k.Masa_Mula, k.Masa_Tamat,
-                    k.Nama_Program, k.Tempat, k.Anjuran, k.Catatan, k.Tarikh_Rekod
+                    k.Tarikh_Mula?.split('T')[0] || '', k.Tarikh_Tamat?.split('T')[0] || '', k.Masa_Mula, k.Masa_Tamat,
+                    k.Nama_Program, k.Tempat, k.Anjuran, k.Catatan, k.Tarikh_Rekod?.split('T')[0] || ''
                 ]);
                 const csv = [headers, ...rows].map(r => r.map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(
                     ',')).join('\n');
