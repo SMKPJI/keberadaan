@@ -674,65 +674,88 @@
             });
 
             document.getElementById('fSubmitBtn').addEventListener('click', async () => {
-                const idGuru = elNama.value;
-                const jenis = elJenis.value;
-                const tarikhMula = elTarikhMula.value;
-                const tarikhTamat = elTarikhTamat.value;
-                const masaMula = elMasaMula ? elMasaMula.value : '';
-                const masaTamat = elMasaTamat ? elMasaTamat.value : '';
-                const namaProgram = elNamaProgram ? elNamaProgram.value : '';
-                const tempat = elTempat ? elTempat.value : '';
-                const anjuran = elAnjuran ? elAnjuran.value : '';
-                const jenisCuti = elJenisCuti ? elJenisCuti.value : '';
-                const catatan = elCatatan ? elCatatan.value : '';
-                if (!idGuru) { showError('Sila pilih nama guru'); return; }
-                if (!jenis) { showError('Sila pilih jenis keberadaan'); return; }
-                if (!tarikhMula) { showError('Sila masukkan tarikh mula'); return; }
-                if (!tarikhTamat) { showError('Sila masukkan tarikh tamat'); return; }
-                if (new Date(tarikhTamat) < new Date(tarikhMula)) { showError(
-                        'Tarikh tamat tidak boleh lebih awal dari tarikh mula'); return; }
-                if (jenis === 'Cuti' && !jenisCuti) { showError('Sila pilih jenis cuti'); return; }
-                if ((jenis === 'Rasmi Dalaman' || jenis === 'Keluar Waktu Bekerja') && (!masaMula || !masaTamat)) {
-                    showError('Sila masukkan masa mula dan tamat');
-                    return;
-                }
-                if ((jenis === 'Rasmi Dalaman' || jenis === 'Rasmi Luar') && !namaProgram) {
-                    showError('Sila masukkan nama program');
-                    return;
-                }
-                if (jenis === 'Rasmi Luar' && !tempat) { showError('Sila masukkan tempat'); return; }
-                showError('');
-                const btn = document.getElementById('fSubmitBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-                try {
-                    const guruDipilih = state.guru.find(g => g.id_Guru === idGuru);
-                    const payload = {
-                        id_Guru: idGuru,
-                        Nama_Guru: guruDipilih?.Nama || '',
-                        Jenis_Keberadaan: jenis,
-                        Jenis_Cuti: jenisCuti,
-                        Tarikh_Mula: tarikhMula,
-                        Tarikh_Tamat: tarikhTamat,
-                        Masa_Mula: masaMula,
-                        Masa_Tamat: masaTamat,
-                        Nama_Program: namaProgram,
-                        Tempat: tempat,
-                        Anjuran: anjuran,
-                        Catatan: catatan,
-                    };
-                    const res = await tambahKeberadaan(payload);
-                    if (res.status === 'success') {
-                        showSuccess('Rekod berjaya disimpan!');
-                        state.form = { idGuru: '', jenis: '', jenisCuti: '', tarikhMula: '', tarikhTamat: '',
-                            masaMula: '', masaTamat: '', namaProgram: '', tempat: '', anjuran: '', catatan: '' };
-                        await refreshData();
-                        renderContent();
-                    } else { showError('Gagal menyimpan rekod. Sila cuba lagi.'); }
-                } catch (e) { showError('Ralat sambungan. Sila cuba lagi.'); } finally { btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Rekod'; }
-            });
+  const btn = document.getElementById('fSubmitBtn');
+  
+  // Jika butang sudah dilumpuhkan, abaikan klik (cegah klik berganda)
+  if (btn.disabled) return;
+  
+  // Lumpuhkan segera sebelum sebarang validasi
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
+  // Baca nilai dari elemen form
+  const idGuru = elNama.value;
+  const jenis = elJenis.value;
+  const tarikhMula = elTarikhMula.value;
+  const tarikhTamat = elTarikhTamat.value;
+  const masaMula = elMasaMula ? elMasaMula.value : '';
+  const masaTamat = elMasaTamat ? elMasaTamat.value : '';
+  const namaProgram = elNamaProgram ? elNamaProgram.value : '';
+  const tempat = elTempat ? elTempat.value : '';
+  const anjuran = elAnjuran ? elAnjuran.value : '';
+  const jenisCuti = elJenisCuti ? elJenisCuti.value : '';
+  const catatan = elCatatan ? elCatatan.value : '';
+
+  // Validasi (jika gagal, pulihkan butang)
+  let errorMsg = '';
+  if (!idGuru) errorMsg = 'Sila pilih nama guru';
+  else if (!jenis) errorMsg = 'Sila pilih jenis keberadaan';
+  else if (!tarikhMula) errorMsg = 'Sila masukkan tarikh mula';
+  else if (!tarikhTamat) errorMsg = 'Sila masukkan tarikh tamat';
+  else if (new Date(tarikhTamat) < new Date(tarikhMula)) 
+    errorMsg = 'Tarikh tamat tidak boleh lebih awal dari tarikh mula';
+  else if (jenis === 'Cuti' && !jenisCuti) 
+    errorMsg = 'Sila pilih jenis cuti';
+  else if ((jenis === 'Rasmi Dalaman' || jenis === 'Keluar Waktu Bekerja') && (!masaMula || !masaTamat)) 
+    errorMsg = 'Sila masukkan masa mula dan tamat';
+  else if ((jenis === 'Rasmi Dalaman' || jenis === 'Rasmi Luar') && !namaProgram) 
+    errorMsg = 'Sila masukkan nama program';
+  else if (jenis === 'Rasmi Luar' && !tempat) 
+    errorMsg = 'Sila masukkan tempat';
+
+  if (errorMsg) {
+    showError(errorMsg);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Rekod';
+    return;
+  }
+
+  showError('');
+  try {
+    const guruDipilih = state.guru.find(g => g.id_Guru === idGuru);
+    const payload = {
+      id_Guru: idGuru,
+      Nama_Guru: guruDipilih?.Nama || '',
+      Jenis_Keberadaan: jenis,
+      Jenis_Cuti: jenisCuti,
+      Tarikh_Mula: tarikhMula,
+      Tarikh_Tamat: tarikhTamat,
+      Masa_Mula: masaMula,
+      Masa_Tamat: masaTamat,
+      Nama_Program: namaProgram,
+      Tempat: tempat,
+      Anjuran: anjuran,
+      Catatan: catatan,
+    };
+    const res = await tambahKeberadaan(payload);
+    if (res.status === 'success') {
+      showSuccess('Rekod berjaya disimpan!');
+      state.form = { idGuru: '', jenis: '', jenisCuti: '', tarikhMula: '', tarikhTamat: '', masaMula: '', masaTamat: '', namaProgram: '', tempat: '', anjuran: '', catatan: '' };
+      await refreshData();
+      renderContent();
+    } else {
+      showError('Gagal menyimpan rekod. Sila cuba lagi.');
+    }
+  } catch (e) {
+    showError('Ralat sambungan. Sila cuba lagi.');
+  } finally {
+    // Hanya aktifkan semula butang jika tiada ralat kritikal (tapi kita biarkan aktif semula)
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Rekod';
+    // Jika berjaya, borang sudah di-render semula, jadi butang baru akan tercipta.
+    // Tetapi ini hanya untuk kes di mana renderContent tidak dipanggil (contohnya ralat)
+  }
+});
             elNama.addEventListener('change', () => state.form.idGuru = elNama.value);
             elJenis.addEventListener('change', () => state.form.jenis = elJenis.value);
             elTarikhMula.addEventListener('change', () => state.form.tarikhMula = elTarikhMula.value);
