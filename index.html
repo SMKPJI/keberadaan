@@ -199,7 +199,8 @@
         // =====================================================================
         // 1. KONSTAN & API
         // =====================================================================
-        const API_URL = 'https://script.google.com/macros/s/AKfycbw_XPcFIaGK1-04_RsJEGIc1J9q92glcEBhJzb2VQamCXyZZJsy7ypXPkADwhkXaGZw/exec';
+        const API_URL =
+            'https://script.google.com/macros/s/AKfycbw_XPcFIaGK1-04_RsJEGIc1J9q92glcEBhJzb2VQamCXyZZJsy7ypXPkADwhkXaGZw/exec';
 
         const JENIS_KEBERADAAN = [
             'Rasmi Dalaman',
@@ -270,7 +271,10 @@
 
         async function tambahKeberadaan(payload) { return apiPost({ action: 'tambahKeberadaan', payload }); }
 
-        async function padamKeberadaan(id) { return apiPost({ action: 'padamKeberadaan', id }); }
+        // ===== PERUBAHAN UTAMA: hantar id_keberadaan (bukan id) =====
+        async function padamKeberadaan(id) {
+            return apiPost({ action: 'padamKeberadaan', id_keberadaan: id });
+        }
 
         async function getTetapan() { return apiGet({ action: 'getTetapan' }); }
 
@@ -295,12 +299,6 @@
         function formatTarikhLocal(tarikhStr) {
             if (!tarikhStr) return '';
             const d = new Date(tarikhStr);
-            // Jika tarikhStr adalah '2026-06-22' (tanpa masa), Date akan anggap sebagai UTC?
-            // Untuk selamat, kita gunakan getFullYear/getMonth/getDate yang mengambil kira zon setempat.
-            // Tetapi jika input hanya '2026-06-22', new Date('2026-06-22') akan interpret sebagai UTC (kerana tiada masa),
-            // jadi getFullYear() akan tetap 2026, getMonth()=5, getDate()=22. OK.
-            // Jika input ada masa seperti '2026-06-21T16:00:00.000Z', new Date() akan tukar ke tempatan.
-            // Di Malaysia (UTC+8), 16:00 UTC = 00:00 hari berikutnya, jadi getDate() akan pulangkan 22.
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
@@ -940,7 +938,7 @@
         }
 
         // =====================================================================
-        // 10. VIEW: URUS KEBERADAAN (dengan pembetulan tarikh untuk export)
+        // 10. VIEW: URUS KEBERADAAN (dengan pembetulan untuk padam & export)
         // =====================================================================
         function renderUrusKeberadaan(container) {
             const { keberadaan, tetapan } = state;
@@ -1053,50 +1051,52 @@
                 renderContent();
             });
 
-           document.querySelectorAll('.btnPadamRekod').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        const nama = btn.dataset.nama;
-        showConfirm('Padam Rekod', `Adakah anda pasti mahu memadam rekod untuk <strong>${nama}</strong>? Tindakan ini tidak boleh dibatalkan.`, async () => {
-            try {
-                const res = await padamKeberadaan(id);
-                console.log('Respons padam rekod:', res); // <-- lihat di console
-                if (res.status === 'success') {
-                    await refreshData();
-                    renderContent();
-                } else {
-                    // Tunjukkan mesej ralat daripada API jika ada
-                    const msg = res.message || 'Ralat tidak diketahui.';
-                    alert(`Gagal memadam rekod: ${msg}`);
-                }
-            } catch (err) {
-                console.error('Ralat semasa padam:', err);
-                alert('Ralat sambungan. Sila semak konsol untuk butiran.');
-            }
-        });
-    });
-});
+            // ===== PERUBAHAN PENTING: Padam rekod dengan id_keberadaan =====
+            document.querySelectorAll('.btnPadamRekod').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const nama = btn.dataset.nama;
+                    console.log('ID untuk dipadam:', id); // <-- semak di konsol
+                    showConfirm('Padam Rekod',
+                        `Adakah anda pasti mahu memadam rekod untuk <strong>${nama}</strong>? (ID: ${id})`,
+                        async () => {
+                            try {
+                                const res = await padamKeberadaan(id);
+                                console.log('Respons padam rekod:', res);
+                                if (res.status === 'success') {
+                                    await refreshData();
+                                    renderContent();
+                                } else {
+                                    const msg = res.message || 'Ralat tidak diketahui.';
+                                    alert(`Gagal memadam rekod: ${msg}`);
+                                }
+                            } catch (err) {
+                                console.error('Ralat semasa padam:', err);
+                                alert('Ralat sambungan. Sila semak konsol untuk butiran.');
+                            }
+                        });
+                });
+            });
 
             // ========== EXPORT EXCEL (dengan pembetulan tarikh) ==========
             document.getElementById('exportExcelBtn').addEventListener('click', () => {
                 const headers = ['ID', 'Nama Guru', 'Jenis Keberadaan', 'Jenis Cuti', 'Tarikh Mula', 'Tarikh Tamat',
                     'Masa Mula', 'Masa Tamat', 'Nama Program', 'Tempat', 'Anjuran', 'Catatan', 'Tarikh Rekod'
                 ];
-                // Guna formatTarikhLocal untuk setiap medan tarikh
                 const rows = dataTapis.map(k => [
                     k.id_keberadaan,
                     k.Nama_Guru,
                     k.Jenis_Keberadaan,
                     k.Jenis_Cuti,
-                    formatTarikhLocal(k.Tarikh_Mula), // <-- pembetulan
-                    formatTarikhLocal(k.Tarikh_Tamat), // <-- pembetulan
+                    formatTarikhLocal(k.Tarikh_Mula),
+                    formatTarikhLocal(k.Tarikh_Tamat),
                     k.Masa_Mula,
                     k.Masa_Tamat,
                     k.Nama_Program,
                     k.Tempat,
                     k.Anjuran,
                     k.Catatan,
-                    formatTarikhLocal(k.Tarikh_Rekod) // <-- pembetulan
+                    formatTarikhLocal(k.Tarikh_Rekod)
                 ]);
                 const csv = [headers, ...rows].map(r => r.map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(
                     ',')).join('\n');
@@ -1109,7 +1109,7 @@
                 URL.revokeObjectURL(url);
             });
 
-            // ========== EXPORT PDF (guna formatTarikh yang sedia ada) ==========
+            // ========== EXPORT PDF ==========
             document.getElementById('exportPdfBtn').addEventListener('click', () => {
                 const namaSekolah = tetapan?.nama_sekolah || 'Sistem Keberadaan Guru';
                 const tarikhCetak = new Date().toLocaleDateString('ms-MY', { day: '2-digit', month: 'long',
