@@ -1054,19 +1054,29 @@
                 renderContent();
             });
 
-            document.querySelectorAll('.btnPadamRekod').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const id = btn.dataset.id;
-                    const nama = btn.dataset.nama;
-                    showConfirm('Padam Rekod',
-                        `Adakah anda pasti mahu memadam rekod untuk <strong>${nama}</strong>? Tindakan ini tidak boleh dibatalkan.`,
-                        async () => {
-                            const res = await padamKeberadaan(id);
-                            if (res.status === 'success') { await refreshData();
-                                renderContent(); } else alert('Gagal memadam rekod.');
-                        });
-                });
-            });
+           document.querySelectorAll('.btnPadamRekod').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const nama = btn.dataset.nama;
+        showConfirm('Padam Rekod', `Adakah anda pasti mahu memadam rekod untuk <strong>${nama}</strong>? Tindakan ini tidak boleh dibatalkan.`, async () => {
+            try {
+                const res = await padamKeberadaan(id);
+                console.log('Respons padam rekod:', res); // <-- lihat di console
+                if (res.status === 'success') {
+                    await refreshData();
+                    renderContent();
+                } else {
+                    // Tunjukkan mesej ralat daripada API jika ada
+                    const msg = res.message || 'Ralat tidak diketahui.';
+                    alert(`Gagal memadam rekod: ${msg}`);
+                }
+            } catch (err) {
+                console.error('Ralat semasa padam:', err);
+                alert('Ralat sambungan. Sila semak konsol untuk butiran.');
+            }
+        });
+    });
+});
 
             // ========== EXPORT EXCEL (dengan pembetulan tarikh) ==========
             document.getElementById('exportExcelBtn').addEventListener('click', () => {
