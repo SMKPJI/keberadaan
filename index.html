@@ -273,7 +273,7 @@
 
         // ===== PERUBAHAN: hantar id_keberadaan (bukan id) =====
         async function padamKeberadaan(id) {
-            return apiPost({ action: 'padamKeberadaan', id_keberadaan: id });
+            return apiPost({ action: 'padamKeberadaan', id: id });
         }
 
         async function getTetapan() { return apiGet({ action: 'getTetapan' }); }
